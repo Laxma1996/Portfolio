@@ -155,32 +155,160 @@ document.querySelectorAll('.project-card, .timeline-item, .skill-category, .stat
     observer.observe(el);
 });
 
-// Contact form handling
+// Contact form handling with Formspree (easier setup)
 contactForm.addEventListener('submit', (e) => {
     e.preventDefault();
     
     const formData = new FormData(contactForm);
     const data = Object.fromEntries(formData);
     
-    // Simulate form submission
     const submitBtn = contactForm.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
     
+    // Show loading state
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
     submitBtn.disabled = true;
     
-    setTimeout(() => {
-        submitBtn.innerHTML = '<i class="fas fa-check"></i> Sent!';
-        submitBtn.style.background = 'var(--gradient-secondary)';
+    // Prepare data for Formspree
+    const formDataToSend = new FormData();
+    formDataToSend.append('name', data.name);
+    formDataToSend.append('email', data.email);
+    formDataToSend.append('subject', data.subject);
+    formDataToSend.append('message', data.message);
+    formDataToSend.append('_replyto', data.email);
+    formDataToSend.append('_subject', `Portfolio Contact: ${data.subject}`);
+    
+    // Send to Formspree (you'll need to replace with your Formspree endpoint)
+    fetch('https://formspree.io/f/xeorldyp', {
+        method: 'POST',
+        body: formDataToSend,
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            // Show success state
+            submitBtn.innerHTML = '<i class="fas fa-check"></i> Sent!';
+            submitBtn.style.background = 'var(--gradient-secondary)';
+            
+            // Show success message
+            showNotification('Message sent successfully! I\'ll get back to you soon.', 'success');
+            
+            // Reset form after delay
+            setTimeout(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                submitBtn.style.background = '';
+                contactForm.reset();
+            }, 3000);
+        } else {
+            throw new Error('Network response was not ok');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
         
+        // Show error state
+        submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+        submitBtn.style.background = '#e74c3c';
+        
+        // Show error message
+        showNotification('Failed to send message. Please try again or contact me directly at lakshmakandula@gmail.com', 'error');
+        
+        // Reset button after delay
         setTimeout(() => {
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
             submitBtn.style.background = '';
-            contactForm.reset();
-        }, 2000);
-    }, 1500);
+        }, 3000);
+    });
 });
+
+// Notification system
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        </div>
+        <button class="notification-close" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    // Add styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : '#3498db'};
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 400px;
+        animation: slideInRight 0.3s ease;
+    `;
+    
+    // Add animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .notification-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideInRight 0.3s ease reverse';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 5000);
+}
 
 // Scroll to top functionality
 function scrollToTop() {
